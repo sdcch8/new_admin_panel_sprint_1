@@ -26,7 +26,8 @@ CREATE TABLE IF NOT EXISTS content.genre_film_work (
     film_work_id uuid REFERENCES content.film_work(id) ON DELETE CASCADE,
     genre_id uuid REFERENCES content.genre(id) ON DELETE CASCADE,
     created timestamp with time zone
-); 
+);
+CREATE INDEX film_work_genre_idx ON content.genre_film_work(film_work_id, genre_id);
 
 CREATE TABLE IF NOT EXISTS content.person (
     id uuid PRIMARY KEY,
@@ -34,7 +35,6 @@ CREATE TABLE IF NOT EXISTS content.person (
     created timestamp with time zone,
     modified timestamp with time zone
 );
-CREATE INDEX person_full_name_idx ON content.person(full_name);
 
 CREATE TABLE IF NOT EXISTS content.person_film_work (
     id uuid PRIMARY KEY,
@@ -43,7 +43,7 @@ CREATE TABLE IF NOT EXISTS content.person_film_work (
     role TEXT NOT NULL,
     created timestamp with time zone
 );
-CREATE UNIQUE INDEX film_work_person_idx ON content.person_film_work (film_work_id, person_id);
+CREATE INDEX film_work_person_role_idx ON content.person_film_work(film_work_id, person_id, role);
 
 
 ALTER ROLE app SET search_path TO content,public;
