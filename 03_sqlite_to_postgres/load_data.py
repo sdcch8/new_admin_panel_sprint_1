@@ -83,6 +83,7 @@ if __name__ == '__main__':
            'host': os.environ.get('DB_HOST', '127.0.0.1'),
            'port': os.environ.get('DB_PORT', 5432),
            }
+           
     with (sqlite3.connect('db.sqlite') as sqlite_conn,
           psycopg2.connect(**dsl, cursor_factory=DictCursor) as pg_conn):
         load_from_sqlite(sqlite_conn, pg_conn)
