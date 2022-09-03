@@ -53,7 +53,8 @@ def check_data():
             postgres_rows = postgres.cursor.fetchall()
 
             for sql_row, postgres_row in zip(sql_rows, postgres_rows):
-                fields = [field for field in postgres_row.keys() if field not in ['created', 'modified']]
+                fields = [field for field in postgres_row.keys()
+                          if field not in ['created', 'modified']]
 
                 for field in fields:
                     assert sql_row[field] == postgres_row[field]
