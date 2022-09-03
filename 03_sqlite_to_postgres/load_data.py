@@ -1,11 +1,11 @@
 import os
 import sqlite3
+from contextlib import contextmanager
 from dataclasses import astuple
 from dataclasses import fields as dataclass_fields
 
 import psycopg2
 from dotenv import load_dotenv
-from psycopg2.extensions import connection as _connection
 from psycopg2.extras import DictCursor, execute_values
 
 from data_classes import TABLE_CLASS_MAPPING, TABLE_FIELDS_MAPPING
@@ -14,20 +14,37 @@ BATCH_SIZE = 500
 load_dotenv()
 
 
+@contextmanager
+def get_sqlite_connection():
+    sqlite_connection = sqlite3.connect('db.sqlite')
+    sqlite_connection.row_factory = sqlite3.Row
+    try:
+        yield sqlite_connection
+    finally:
+        sqlite_connection.close()
+
+
+@contextmanager
+def get_pg_connection(dsl):
+    pg_connection = psycopg2.connect(**dsl, cursor_factory=DictCursor)
+    try:
+        yield pg_connection
+    finally:
+        pg_connection.close()
+
+
 class SQLiteLoader():
     def __init__(self, connection):
         self.connection = connection
+        self.cursor = self.connection.cursor()
 
     def load_data(self):
-        self.connection.row_factory = sqlite3.Row
-        cursor = self.connection.cursor()
-
         for table, data_class in TABLE_CLASS_MAPPING.items():
-            cursor.execute(f'SELECT * FROM {table};')
+            self.cursor.execute(f'SELECT * FROM {table};')
             fields = [field.name for field in dataclass_fields(data_class)]
 
             while True:
-                batch = cursor.fetchmany(BATCH_SIZE)
+                batch = self.cursor.fetchmany(BATCH_SIZE)
                 if not batch:
                     break
                 for index, row in enumerate(batch):
@@ -66,9 +83,9 @@ class PostgresSaver:
         self.connection.commit()
 
 
-def load_from_sqlite(connection: sqlite3.Connection, pg_conn: _connection):
-    postgres_saver = PostgresSaver(pg_conn)
-    sqlite_loader = SQLiteLoader(connection)
+def load_from_sqlite(sqlite_connection, pg_connection):
+    postgres_saver = PostgresSaver(pg_connection)
+    sqlite_loader = SQLiteLoader(sqlite_connection)
 
     postgres_saver.truncate_tables()
 
@@ -83,7 +100,6 @@ if __name__ == '__main__':
            'host': os.environ.get('DB_HOST', '127.0.0.1'),
            'port': os.environ.get('DB_PORT', 5432),
            }
-           
-    with (sqlite3.connect('db.sqlite') as sqlite_conn,
-          psycopg2.connect(**dsl, cursor_factory=DictCursor) as pg_conn):
-        load_from_sqlite(sqlite_conn, pg_conn)
+    with (get_sqlite_connection() as sqlite_connection,
+          get_pg_connection(dsl) as pg_connection):
+        load_from_sqlite(sqlite_connection, pg_connection)
