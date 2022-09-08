@@ -43,10 +43,7 @@ class SQLiteLoader():
             self.cursor.execute(f'SELECT * FROM {table};')
             fields = [field.name for field in dataclass_fields(data_class)]
 
-            while True:
-                batch = self.cursor.fetchmany(BATCH_SIZE)
-                if not batch:
-                    break
+            while batch := self.cursor.fetchmany(BATCH_SIZE):
                 for index, row in enumerate(batch):
                     batch[index] = data_class(
                         **{key: value for key, value in dict(row).items()
